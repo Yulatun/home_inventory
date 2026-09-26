@@ -14,3 +14,6 @@ npm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Local Claude Code preview config (machine-specific paths)
+.claude/
