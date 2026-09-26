@@ -279,40 +279,54 @@ create policy "authenticated users can create a household"
 create policy "members can view their household's members"
   on household_members for select using (is_household_member(household_id));
 
--- An insert is allowed either as the founding owner of a brand-new household
--- (no members yet) or by redeeming a pending invite sent to your own email —
--- otherwise a user could self-join any household by guessing its UUID.
+-- These checks must read tables the caller can't see under RLS (a non-member
+-- can't see household_members or household_invites rows), so they run as
+-- security definer. Doing them inline in the policy would make "household
+-- has no members" always true for outsiders, letting anyone self-join any
+-- household.
+create or replace function household_is_empty(target_household_id uuid)
+returns boolean as $$
+  select not exists (
+    select 1 from household_members where household_id = target_household_id
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function has_pending_invite(target_household_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from household_invites
+    where household_id = target_household_id
+      and status = 'pending'
+      and expires_at > now()
+      and lower(email) = lower(auth.jwt() ->> 'email')
+  );
+$$ language sql stable security definer set search_path = public;
+
+create or replace function is_household_owner(target_household_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from household_members
+    where household_id = target_household_id
+      and user_id = auth.uid()
+      and role = 'owner'
+  );
+$$ language sql stable security definer set search_path = public;
+
+-- Join either as the founding owner of a brand-new household, or as a
+-- regular member by redeeming a pending invite sent to your own email.
 create policy "users can join via valid invite or as first owner"
   on household_members for insert
   with check (
     user_id = auth.uid()
     and (
-      not exists (
-        select 1 from household_members hm
-        where hm.household_id = household_members.household_id
-      )
-      or exists (
-        select 1 from household_invites hi
-        join auth.users u on u.id = auth.uid()
-        where hi.household_id = household_members.household_id
-          and hi.status = 'pending'
-          and hi.expires_at > now()
-          and lower(hi.email) = lower(u.email)
-      )
+      (role = 'owner' and household_is_empty(household_id))
+      or (role = 'member' and has_pending_invite(household_id))
     )
   );
 
 create policy "members can leave, owners can remove members"
   on household_members for delete
-  using (
-    user_id = auth.uid()
-    or exists (
-      select 1 from household_members owner_check
-      where owner_check.household_id = household_members.household_id
-        and owner_check.user_id = auth.uid()
-        and owner_check.role = 'owner'
-    )
-  );
+  using (user_id = auth.uid() or is_household_owner(household_id));
 
 -- HOUSEHOLD_INVITES
 create policy "members can view their household's invites"
