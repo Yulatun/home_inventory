@@ -1,5 +1,9 @@
+import type { Session } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
+import { AppShell } from "@/components/AppShell";
+import { CenteredLayout } from "@/components/CenteredLayout";
 import { CreateHouseholdForm } from "@/components/CreateHouseholdForm";
+import { HouseholdProvider } from "@/context/household";
 import { supabase } from "@/lib/supabase";
 
 type Household = { id: string; name: string };
@@ -10,7 +14,7 @@ type State =
   | { type: "none" }
   | { type: "found"; household: Household };
 
-export function HouseholdGate() {
+export function HouseholdGate({ session }: { session: Session }) {
   const [state, setState] = useState<State>({ type: "loading" });
 
   const fetchHousehold = useCallback(async () => {
@@ -37,22 +41,33 @@ export function HouseholdGate() {
 
   if (state.type === "loading") {
     return (
-      <p className="text-muted-foreground text-sm">Loading your household...</p>
+      <CenteredLayout>
+        <p className="text-muted-foreground text-sm">
+          Loading your household...
+        </p>
+      </CenteredLayout>
     );
   }
 
   if (state.type === "error") {
-    return <p className="text-destructive text-sm">{state.message}</p>;
+    return (
+      <CenteredLayout>
+        <p className="text-destructive text-sm">{state.message}</p>
+      </CenteredLayout>
+    );
   }
 
   if (state.type === "none") {
-    return <CreateHouseholdForm onCreated={handleCreated} />;
+    return (
+      <CenteredLayout>
+        <CreateHouseholdForm onCreated={handleCreated} />
+      </CenteredLayout>
+    );
   }
 
   return (
-    <div className="flex flex-col items-center gap-2 text-center">
-      <p className="text-lg font-medium">{state.household.name}</p>
-      <p className="text-muted-foreground text-sm">No rooms yet.</p>
-    </div>
+    <HouseholdProvider household={state.household}>
+      <AppShell session={session} />
+    </HouseholdProvider>
   );
 }
