@@ -371,3 +371,29 @@ create policy "members can view activity log"
   on activity_log for select using (is_household_member(household_id));
 create policy "members can insert activity log"
   on activity_log for insert with check (is_household_member(household_id));
+
+-- =========================================================================
+-- RPC: create_household
+-- Wraps "insert the household, then insert your own owner membership" in a
+-- single transaction, so if the second insert fails (e.g. you already
+-- belong to a household, per the unique(user_id) constraint) the household
+-- row rolls back too instead of being left orphaned. Runs with the caller's
+-- own privileges (no security definer) — the RLS policies above already
+-- permit exactly this sequence for an authenticated user.
+-- =========================================================================
+create function create_household(household_name text)
+returns households
+language plpgsql
+as $$
+declare
+  new_household households;
+begin
+  insert into households (name) values (household_name) returning * into new_household;
+  insert into household_members (household_id, user_id, role)
+    values (new_household.id, auth.uid(), 'owner');
+  return new_household;
+end;
+$$;
+
+revoke all on function create_household(text) from public;
+grant execute on function create_household(text) to authenticated;
