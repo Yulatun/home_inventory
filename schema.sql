@@ -377,13 +377,21 @@ create policy "members can insert activity log"
 -- Wraps "insert the household, then insert your own owner membership" in a
 -- single transaction, so if the second insert fails (e.g. you already
 -- belong to a household, per the unique(user_id) constraint) the household
--- row rolls back too instead of being left orphaned. Runs with the caller's
--- own privileges (no security definer) — the RLS policies above already
--- permit exactly this sequence for an authenticated user.
+-- row rolls back too instead of being left orphaned.
+--
+-- security definer is required here, not just convenient: "returning *"
+-- makes Postgres re-check the new row against the table's SELECT policy
+-- (is_household_member), and at that point in the transaction the founding
+-- membership row doesn't exist yet — the SELECT policy would always fail.
+-- This is safe to bypass RLS for: the function takes no household_id from
+-- the caller, always creates a brand-new row, and always assigns auth.uid()
+-- (never an arbitrary user) as owner.
 -- =========================================================================
 create function create_household(household_name text)
 returns households
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   new_household households;
