@@ -1,3 +1,4 @@
+import { Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import {
   type LocationLevel,
+  ROOM_PRESETS,
   UNIT_TYPES,
   levelLabel,
   unitTypeLabel,
@@ -37,6 +39,7 @@ export function LocationList({
 }) {
   const [rows, setRows] = useState<LocationRow[] | "loading">("loading");
   const [error, setError] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const fetchRows = useCallback(async () => {
     let query = supabase
@@ -77,33 +80,155 @@ export function LocationList({
           {rows.map((row) => {
             const typeLabel = unitTypeLabel(row.unit_type);
             return (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(row)}
-                  className={cn(
-                    "flex w-full items-center justify-between px-4 py-3 text-left text-sm",
-                    row.unit_type === "nounit" && "text-muted-foreground",
-                  )}
-                >
-                  <span>{row.name}</span>
-                  {typeLabel && (
-                    <span className="text-muted-foreground text-xs">
-                      {typeLabel}
-                    </span>
-                  )}
-                </button>
+              <li key={row.id} className="flex items-center gap-1 px-2 py-1">
+                {renamingId === row.id ? (
+                  <RenameForm
+                    row={row}
+                    onDone={() => {
+                      setRenamingId(null);
+                      fetchRows();
+                    }}
+                  />
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(row)}
+                      className={cn(
+                        "flex flex-1 items-center justify-between px-2 py-2 text-left text-sm",
+                        row.unit_type === "nounit" && "text-muted-foreground",
+                      )}
+                    >
+                      <span>{row.name}</span>
+                      {typeLabel && (
+                        <span className="text-muted-foreground text-xs">
+                          {typeLabel}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Rename ${row.name}`}
+                      onClick={() => setRenamingId(row.id)}
+                      className="text-muted-foreground p-2"
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                  </>
+                )}
               </li>
             );
           })}
         </ul>
       )}
+
+      {level === "room" && (
+        <RoomPresets householdId={householdId} onCreated={fetchRows} />
+      )}
+
       <AddLocationForm
         householdId={householdId}
         parentId={parentId}
         level={level}
         onCreated={fetchRows}
       />
+    </div>
+  );
+}
+
+function RenameForm({
+  row,
+  onDone,
+}: {
+  row: LocationRow;
+  onDone: () => void;
+}) {
+  const [name, setName] = useState(row.name);
+  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setStatus("saving");
+    const { error } = await supabase
+      .from("locations")
+      .update({ name })
+      .eq("id", row.id);
+
+    if (error) {
+      setErrorMessage(error.message);
+      setStatus("error");
+      return;
+    }
+    onDone();
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-2 py-1">
+      <Input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        autoFocus
+        required
+      />
+      <Button type="submit" size="sm" disabled={status === "saving"}>
+        Save
+      </Button>
+      <Button type="button" size="sm" variant="outline" onClick={onDone}>
+        Cancel
+      </Button>
+      {status === "error" && (
+        <p className="text-destructive text-xs">{errorMessage}</p>
+      )}
+    </form>
+  );
+}
+
+function RoomPresets({
+  householdId,
+  onCreated,
+}: {
+  householdId: string;
+  onCreated: () => void;
+}) {
+  const [pending, setPending] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function addRoom(name: string) {
+    setPending(name);
+    const { error } = await supabase.from("locations").insert({
+      household_id: householdId,
+      parent_id: null,
+      level: "room",
+      name,
+    });
+    setPending(null);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    onCreated();
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-muted-foreground text-sm">Quick add a room:</p>
+      <div className="flex flex-wrap gap-2">
+        {ROOM_PRESETS.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            disabled={pending === preset}
+            onClick={() => addRoom(preset)}
+            className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            {pending === preset ? "Adding..." : preset}
+          </button>
+        ))}
+      </div>
+      {errorMessage && (
+        <p className="text-destructive text-sm">{errorMessage}</p>
+      )}
     </div>
   );
 }
@@ -153,6 +278,9 @@ function AddLocationForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+      {level === "room" && (
+        <p className="text-muted-foreground text-sm">Or add a custom room:</p>
+      )}
       <Input
         placeholder={`${levelLabel(level)} name`}
         value={name}

@@ -12,6 +12,19 @@ export const UNIT_TYPES = [
   { value: "other", label: "Other" },
 ] as const;
 
+export const ROOM_PRESETS = [
+  "Bedroom",
+  "Kitchen",
+  "Living Room",
+  "Bathroom",
+  "Corridor",
+  "Garage",
+  "Basement",
+  "Attic",
+  "Balcony",
+  "Office",
+] as const;
+
 const NEXT_LEVEL: Record<LocationLevel, LocationLevel | null> = {
   room: "unit",
   unit: "shelf",
