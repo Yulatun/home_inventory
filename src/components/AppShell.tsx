@@ -3,9 +3,10 @@ import useEmblaCarousel from "embla-carousel-react";
 import { Home, MapPin, Package, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { BottomTabBar, type Tab } from "@/components/BottomTabBar";
-import { ComingSoonScreen } from "@/screens/ComingSoonScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
+import { ItemsScreen } from "@/screens/ItemsScreen";
 import { LocationsScreen } from "@/screens/LocationsScreen";
+import { SearchScreen } from "@/screens/SearchScreen";
 
 const TABS: readonly Tab[] = [
   { id: "home", label: "Home", icon: Home },
@@ -44,10 +45,10 @@ export function AppShell({ session }: { session: Session }) {
             <LocationsScreen />
           </div>
           <div className="h-full min-w-0 flex-[0_0_100%] overflow-y-auto">
-            <ComingSoonScreen title="Items" />
+            <ItemsScreen session={session} />
           </div>
           <div className="h-full min-w-0 flex-[0_0_100%] overflow-y-auto">
-            <ComingSoonScreen title="Search" />
+            <SearchScreen />
           </div>
         </div>
       </div>
