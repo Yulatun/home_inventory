@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,9 @@ export function LocationList({
 }) {
   const [rows, setRows] = useState<LocationRow[] | "loading">("loading");
   const [error, setError] = useState("");
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [activeAction, setActiveAction] = useState<
+    { id: string; type: "rename" | "delete" } | null
+  >(null);
 
   const fetchRows = useCallback(async () => {
     let query = supabase
@@ -81,11 +83,20 @@ export function LocationList({
             const typeLabel = unitTypeLabel(row.unit_type);
             return (
               <li key={row.id} className="flex items-center gap-1 px-2 py-1">
-                {renamingId === row.id ? (
+                {activeAction?.id === row.id && activeAction.type === "rename" ? (
                   <RenameForm
                     row={row}
                     onDone={() => {
-                      setRenamingId(null);
+                      setActiveAction(null);
+                      fetchRows();
+                    }}
+                  />
+                ) : activeAction?.id === row.id && activeAction.type === "delete" ? (
+                  <DeleteConfirm
+                    row={row}
+                    onCancel={() => setActiveAction(null)}
+                    onDone={() => {
+                      setActiveAction(null);
                       fetchRows();
                     }}
                   />
@@ -109,10 +120,18 @@ export function LocationList({
                     <button
                       type="button"
                       aria-label={`Rename ${row.name}`}
-                      onClick={() => setRenamingId(row.id)}
+                      onClick={() => setActiveAction({ id: row.id, type: "rename" })}
                       className="text-muted-foreground p-2"
                     >
                       <Pencil className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete ${row.name}`}
+                      onClick={() => setActiveAction({ id: row.id, type: "delete" })}
+                      className="text-muted-foreground p-2"
+                    >
+                      <Trash2 className="size-4" />
                     </button>
                   </>
                 )}
@@ -181,6 +200,56 @@ function RenameForm({
         <p className="text-destructive text-xs">{errorMessage}</p>
       )}
     </form>
+  );
+}
+
+function DeleteConfirm({
+  row,
+  onDone,
+  onCancel,
+}: {
+  row: LocationRow;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [status, setStatus] = useState<"idle" | "deleting" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleDelete() {
+    setStatus("deleting");
+    const { error } = await supabase.from("locations").delete().eq("id", row.id);
+    if (error) {
+      setErrorMessage(error.message);
+      setStatus("error");
+      return;
+    }
+    onDone();
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-2 py-2">
+      <p className="text-sm">
+        Delete "{row.name}"? This also deletes everything nested inside it.
+        Items stored here won't be deleted, but will lose their location.
+      </p>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          onClick={handleDelete}
+          disabled={status === "deleting"}
+        >
+          {status === "deleting" ? "Deleting..." : "Delete"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+      {status === "error" && (
+        <p className="text-destructive text-xs">{errorMessage}</p>
+      )}
+    </div>
   );
 }
 
