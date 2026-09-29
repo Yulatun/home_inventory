@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BottomTabBar, type Tab } from "@/components/BottomTabBar";
 import { ComingSoonScreen } from "@/screens/ComingSoonScreen";
 import { HomeScreen } from "@/screens/HomeScreen";
+import { LocationsScreen } from "@/screens/LocationsScreen";
 
 const TABS: readonly Tab[] = [
   { id: "home", label: "Home", icon: Home },
@@ -40,7 +41,7 @@ export function AppShell({ session }: { session: Session }) {
             <HomeScreen session={session} />
           </div>
           <div className="h-full min-w-0 flex-[0_0_100%] overflow-y-auto">
-            <ComingSoonScreen title="Locations" />
+            <LocationsScreen />
           </div>
           <div className="h-full min-w-0 flex-[0_0_100%] overflow-y-auto">
             <ComingSoonScreen title="Items" />
