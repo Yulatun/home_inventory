@@ -144,6 +144,13 @@ export function LocationList({
       {level === "room" && (
         <RoomPresets householdId={householdId} onCreated={fetchRows} />
       )}
+      {level === "unit" && (
+        <UnitPresets
+          householdId={householdId}
+          parentId={parentId}
+          onCreated={fetchRows}
+        />
+      )}
 
       <AddLocationForm
         householdId={householdId}
@@ -302,6 +309,60 @@ function RoomPresets({
   );
 }
 
+const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
+
+function UnitPresets({
+  householdId,
+  parentId,
+  onCreated,
+}: {
+  householdId: string;
+  parentId: string | null;
+  onCreated: () => void;
+}) {
+  const [pending, setPending] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function addUnit(type: (typeof UNIT_PRESETS)[number]) {
+    setPending(type.value);
+    const { error } = await supabase.from("locations").insert({
+      household_id: householdId,
+      parent_id: parentId,
+      level: "unit",
+      name: type.label,
+      unit_type: type.value,
+    });
+    setPending(null);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    onCreated();
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-muted-foreground text-sm">Quick add a unit:</p>
+      <div className="flex flex-wrap gap-2">
+        {UNIT_PRESETS.map((type) => (
+          <button
+            key={type.value}
+            type="button"
+            disabled={pending === type.value}
+            onClick={() => addUnit(type)}
+            className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            {pending === type.value ? "Adding..." : type.label}
+          </button>
+        ))}
+      </div>
+      {errorMessage && (
+        <p className="text-destructive text-sm">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
 function AddLocationForm({
   householdId,
   parentId,
@@ -347,8 +408,10 @@ function AddLocationForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      {level === "room" && (
-        <p className="text-muted-foreground text-sm">Or add a custom room:</p>
+      {(level === "room" || level === "unit") && (
+        <p className="text-muted-foreground text-sm">
+          Or add a custom {levelLabel(level).toLowerCase()}:
+        </p>
       )}
       <Input
         placeholder={`${levelLabel(level)} name`}
