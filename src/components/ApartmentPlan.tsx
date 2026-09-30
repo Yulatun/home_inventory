@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 
 type PlanRoom = LocationRow & { canvas_x: number | null; canvas_y: number | null };
 
-const CARD_WIDTH = 120;
-const CARD_HEIGHT = 80;
-const GRID_GAP = 16;
+const CARD_WIDTH = 96;
+const CARD_HEIGHT = 64;
+const GRID_GAP = 12;
 const COLUMNS = 3;
 const DRAG_THRESHOLD = 4;
 
@@ -29,6 +29,7 @@ export function ApartmentPlan({
 }) {
   const [rooms, setRooms] = useState<PlanRoom[] | "loading">("loading");
   const [error, setError] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchRooms = useCallback(async () => {
     const { data, error } = await supabase
@@ -59,22 +60,24 @@ export function ApartmentPlan({
   }
 
   if (rooms.length === 0) {
-    return <p className="text-muted-foreground p-4 text-sm">No rooms yet.</p>;
+    return (
+      <p className="text-muted-foreground p-4 text-sm">
+        No rooms yet — add one from the Locations tab.
+      </p>
+    );
   }
 
   return (
     <div
-      className="relative h-full min-h-[500px] overflow-auto p-4"
-      style={{
-        backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
-        backgroundSize: "20px 20px",
-      }}
+      ref={containerRef}
+      className="bg-muted/20 relative mx-auto aspect-square w-full max-w-sm border-2"
     >
       {rooms.map((room, index) => (
         <RoomCard
           key={room.id}
           room={room}
           index={index}
+          containerRef={containerRef}
           onOpen={() => onOpenRoom(room)}
         />
       ))}
@@ -85,10 +88,12 @@ export function ApartmentPlan({
 function RoomCard({
   room,
   index,
+  containerRef,
   onOpen,
 }: {
   room: PlanRoom;
   index: number;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onOpen: () => void;
 }) {
   const fallback = defaultPosition(index);
@@ -103,17 +108,22 @@ function RoomCard({
     originX: number;
     originY: number;
     moved: boolean;
+    maxX: number;
+    maxY: number;
   } | null>(null);
 
   function handlePointerDown(event: React.PointerEvent) {
     event.stopPropagation();
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    const bounds = containerRef.current?.getBoundingClientRect();
     dragRef.current = {
       startX: event.clientX,
       startY: event.clientY,
       originX: pos.x,
       originY: pos.y,
       moved: false,
+      maxX: (bounds?.width ?? CARD_WIDTH) - CARD_WIDTH,
+      maxY: (bounds?.height ?? CARD_HEIGHT) - CARD_HEIGHT,
     };
     setDragging(true);
   }
@@ -126,7 +136,10 @@ function RoomCard({
     if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
       drag.moved = true;
     }
-    setPos({ x: Math.max(0, drag.originX + dx), y: Math.max(0, drag.originY + dy) });
+    setPos({
+      x: Math.min(Math.max(0, drag.originX + dx), Math.max(0, drag.maxX)),
+      y: Math.min(Math.max(0, drag.originY + dy), Math.max(0, drag.maxY)),
+    });
   }
 
   async function handlePointerUp() {

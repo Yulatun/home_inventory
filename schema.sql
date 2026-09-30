@@ -411,3 +411,35 @@ $$;
 
 revoke all on function create_household(text) from public;
 grant execute on function create_household(text) to authenticated;
+
+-- =========================================================================
+-- ROOM FEATURES
+-- Doors and windows placed on a room's plan. Deliberately not part of the
+-- locations hierarchy (they're not storage, don't nest, and don't hold
+-- items) — a room_id FK plus a wall + 1D position along that wall is all
+-- that's needed. `wall` is fixed at creation (you pick it up front); only
+-- `position` (0-1 along that wall) moves via drag.
+-- =========================================================================
+create table room_features (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references households(id) on delete cascade,
+  room_id uuid not null references locations(id) on delete cascade,
+  type text not null check (type in ('door', 'window')),
+  wall text not null check (wall in ('top', 'right', 'bottom', 'left')),
+  position numeric not null default 0.5 check (position >= 0 and position <= 1),
+  created_at timestamptz not null default now()
+);
+
+create index room_features_household_id_idx on room_features(household_id);
+create index room_features_room_id_idx on room_features(room_id);
+
+alter table room_features enable row level security;
+
+create policy "members can view room features"
+  on room_features for select using (is_household_member(household_id));
+create policy "members can insert room features"
+  on room_features for insert with check (is_household_member(household_id));
+create policy "members can update room features"
+  on room_features for update using (is_household_member(household_id));
+create policy "members can delete room features"
+  on room_features for delete using (is_household_member(household_id));
