@@ -63,6 +63,12 @@ create table locations (
   -- 'nounit' is the auto-generated placeholder for "no specific furniture".
   unit_type text,
   position int, -- e.g. shelf number, or manual sort order
+  -- Free-form 2D placement on a visual plan (not to scale) — rooms on the
+  -- apartment-level plan for now; nullable and unused until a location is
+  -- actually dragged, so the same columns can later place units within a
+  -- room's own plan without a schema change.
+  canvas_x numeric,
+  canvas_y numeric,
   created_at timestamptz not null default now(),
   check ((level = 'unit') = (unit_type is not null)),
   check (unit_type is null or unit_type in (

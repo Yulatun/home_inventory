@@ -1,15 +1,19 @@
 import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
+import { ApartmentPlan } from "@/components/ApartmentPlan";
 import { type LocationRow, LocationList } from "@/components/LocationList";
+import { Button } from "@/components/ui/button";
 import { useHousehold } from "@/context/household";
 import { nextLevel } from "@/lib/locations";
 
 export function LocationsScreen() {
   const household = useHousehold();
   const [path, setPath] = useState<LocationRow[]>([]);
+  const [view, setView] = useState<"list" | "plan">("list");
 
   const parent = path.at(-1) ?? null;
   const childLevel = nextLevel(parent?.level ?? null);
+  const atRoot = path.length === 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -24,10 +28,35 @@ export function LocationsScreen() {
             <ChevronLeft className="size-5" />
           </button>
         )}
-        <h1 className="font-semibold">{parent ? parent.name : "Locations"}</h1>
+        <h1 className="flex-1 font-semibold">{parent ? parent.name : "Locations"}</h1>
+        {atRoot && (
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "list" ? "default" : "outline"}
+              onClick={() => setView("list")}
+            >
+              List
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={view === "plan" ? "default" : "outline"}
+              onClick={() => setView("plan")}
+            >
+              Plan
+            </Button>
+          </div>
+        )}
       </div>
 
-      {childLevel ? (
+      {atRoot && view === "plan" ? (
+        <ApartmentPlan
+          householdId={household.id}
+          onOpenRoom={(room) => setPath((p) => [...p, room])}
+        />
+      ) : childLevel ? (
         <LocationList
           key={parent?.id ?? "root"}
           householdId={household.id}
@@ -37,7 +66,7 @@ export function LocationsScreen() {
         />
       ) : (
         <p className="text-muted-foreground p-4 text-sm">
-          Items stored here will show up once the Items tab is built.
+          Items stored here show up on the Items tab.
         </p>
       )}
     </div>
