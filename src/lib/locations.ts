@@ -1,3 +1,16 @@
+import {
+  Archive,
+  Boxes,
+  Box as BoxIcon,
+  Inbox,
+  type LucideIcon,
+  Package,
+  Package2,
+  PackageOpen,
+  Sofa,
+  Table2,
+} from "lucide-react";
+
 export type LocationLevel = "room" | "unit" | "shelf" | "box";
 
 export const UNIT_TYPES = [
@@ -11,6 +24,22 @@ export const UNIT_TYPES = [
   { value: "desk", label: "Desk" },
   { value: "other", label: "Other" },
 ] as const;
+
+const UNIT_TYPE_ICONS: Record<string, LucideIcon> = {
+  wardrobe: Archive,
+  cupboard: Boxes,
+  couch: Sofa,
+  cabinet: Package2,
+  drawer: Inbox,
+  shelving_unit: PackageOpen,
+  chest: Package,
+  desk: Table2,
+  other: BoxIcon,
+};
+
+export function unitTypeIcon(unitType: string | null): LucideIcon {
+  return (unitType && UNIT_TYPE_ICONS[unitType]) || BoxIcon;
+}
 
 export const ROOM_PRESETS = [
   "Bedroom",

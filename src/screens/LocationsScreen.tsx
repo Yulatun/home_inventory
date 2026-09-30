@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
 import { ApartmentPlan } from "@/components/ApartmentPlan";
 import { type LocationRow, LocationList } from "@/components/LocationList";
+import { RoomPlan } from "@/components/RoomPlan";
 import { Button } from "@/components/ui/button";
 import { useHousehold } from "@/context/household";
 import { nextLevel } from "@/lib/locations";
@@ -13,7 +14,7 @@ export function LocationsScreen() {
 
   const parent = path.at(-1) ?? null;
   const childLevel = nextLevel(parent?.level ?? null);
-  const atRoot = path.length === 0;
+  const canShowPlan = childLevel === "room" || childLevel === "unit";
 
   return (
     <div className="flex h-full flex-col">
@@ -29,7 +30,7 @@ export function LocationsScreen() {
           </button>
         )}
         <h1 className="flex-1 font-semibold">{parent ? parent.name : "Locations"}</h1>
-        {atRoot && (
+        {canShowPlan && (
           <div className="flex gap-1">
             <Button
               type="button"
@@ -51,10 +52,16 @@ export function LocationsScreen() {
         )}
       </div>
 
-      {atRoot && view === "plan" ? (
+      {canShowPlan && view === "plan" && childLevel === "room" ? (
         <ApartmentPlan
           householdId={household.id}
           onOpenRoom={(room) => setPath((p) => [...p, room])}
+        />
+      ) : canShowPlan && view === "plan" && childLevel === "unit" && parent ? (
+        <RoomPlan
+          householdId={household.id}
+          roomId={parent.id}
+          onOpenUnit={(unit) => setPath((p) => [...p, unit])}
         />
       ) : childLevel ? (
         <LocationList
