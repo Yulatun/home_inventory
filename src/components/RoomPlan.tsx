@@ -11,6 +11,7 @@ import {
 import { unitTypeIcon, unitTypeLabel } from "@/lib/locations";
 import {
   FEATURE_EMOJI,
+  FEATURE_TYPES,
   type FeatureType,
   WALLS,
   type Wall,
@@ -382,7 +383,11 @@ function AddFeatureForm({
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground text-sm">Add a door or window:</p>
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={type} onValueChange={(v) => setType((v as FeatureType) || "door")}>
+        <Select
+          value={type}
+          onValueChange={(v) => setType((v as FeatureType) || "door")}
+          items={FEATURE_TYPES}
+        >
           <SelectTrigger className="w-28">
             <SelectValue />
           </SelectTrigger>
@@ -391,7 +396,11 @@ function AddFeatureForm({
             <SelectItem value="window">Window</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={wall} onValueChange={(v) => setWall((v as Wall) || "top")}>
+        <Select
+          value={wall}
+          onValueChange={(v) => setWall((v as Wall) || "top")}
+          items={WALLS}
+        >
           <SelectTrigger className="w-28">
             <SelectValue />
           </SelectTrigger>

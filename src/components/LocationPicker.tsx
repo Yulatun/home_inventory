@@ -126,7 +126,11 @@ function LevelSelect({
   onChange: (value: string | null) => void;
 }) {
   return (
-    <Select value={value ?? ""} onValueChange={(v) => onChange(v || null)}>
+    <Select
+      value={value ?? ""}
+      onValueChange={(v) => onChange(v || null)}
+      items={options.map((option) => ({ value: option.id, label: option.name }))}
+    >
       <SelectTrigger>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

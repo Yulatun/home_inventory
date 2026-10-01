@@ -420,7 +420,11 @@ function AddLocationForm({
         required
       />
       {needsUnitType && (
-        <Select value={unitType} onValueChange={(value) => setUnitType(value ?? "")}>
+        <Select
+          value={unitType}
+          onValueChange={(value) => setUnitType(value ?? "")}
+          items={UNIT_TYPES}
+        >
           <SelectTrigger>
             <SelectValue placeholder="What kind of furniture?" />
           </SelectTrigger>
