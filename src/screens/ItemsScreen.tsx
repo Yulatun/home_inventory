@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { CategoryPicker } from "@/components/CategoryPicker";
 import { LocationPicker } from "@/components/LocationPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ type ItemRow = {
   name: string;
   quantity: number;
   locations: { name: string } | null;
+  categories: { name: string } | null;
 };
 
 export function ItemsScreen({ session }: { session: Session }) {
@@ -23,7 +25,7 @@ export function ItemsScreen({ session }: { session: Session }) {
   const fetchItems = useCallback(async () => {
     const { data, error } = await supabase
       .from("items")
-      .select("id, name, quantity, locations(name)")
+      .select("id, name, quantity, locations(name), categories(name)")
       .eq("household_id", household.id)
       .eq("status", "active")
       .order("created_at", { ascending: false })
@@ -88,6 +90,7 @@ export function ItemsScreen({ session }: { session: Session }) {
               >
                 <span>{item.name}</span>
                 <span className="text-muted-foreground text-xs">
+                  {item.categories?.name ? `${item.categories.name} - ` : ""}
                   {item.quantity > 1 ? `x${item.quantity} - ` : ""}
                   {item.locations?.name ?? "Unknown location"}
                 </span>
@@ -118,6 +121,7 @@ function AddItemForm({
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [locationId, setLocationId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -131,6 +135,7 @@ function AddItemForm({
       name,
       quantity: Number(quantity) || 1,
       location_id: locationId,
+      category_id: categoryId,
       created_by: userId,
       updated_by: userId,
     });
@@ -144,6 +149,7 @@ function AddItemForm({
     setName("");
     setQuantity("1");
     setLocationId(null);
+    setCategoryId(null);
     setStatus("idle");
     onCreated();
   }
@@ -167,6 +173,7 @@ function AddItemForm({
         onChange={(event) => setQuantity(event.target.value)}
       />
       <LocationPicker householdId={householdId} onChange={setLocationId} />
+      <CategoryPicker householdId={householdId} onChange={setCategoryId} />
       <Button type="submit" disabled={status === "saving" || !canSubmit}>
         {status === "saving" ? "Adding..." : "Add item"}
       </Button>
@@ -191,6 +198,7 @@ function EditItemForm({
   const [name, setName] = useState(item.name);
   const [quantity, setQuantity] = useState(String(item.quantity));
   const [newLocationId, setNewLocationId] = useState<string | null>(null);
+  const [newCategoryId, setNewCategoryId] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [confirmingRetire, setConfirmingRetire] = useState(false);
@@ -206,6 +214,7 @@ function EditItemForm({
         quantity: Number(quantity) || 1,
         updated_by: userId,
         ...(newLocationId ? { location_id: newLocationId } : {}),
+        ...(newCategoryId ? { category_id: newCategoryId } : {}),
       })
       .eq("id", item.id);
 
@@ -257,6 +266,11 @@ function EditItemForm({
           new location below only if you want to move it.
         </p>
         <LocationPicker householdId={householdId} onChange={setNewLocationId} />
+        <p className="text-muted-foreground text-sm">
+          Current category: {item.categories?.name ?? "None"}. Pick below
+          only if you want to change it.
+        </p>
+        <CategoryPicker householdId={householdId} onChange={setNewCategoryId} />
         <Button type="submit" disabled={status === "saving"}>
           {status === "saving" ? "Saving..." : "Save changes"}
         </Button>
