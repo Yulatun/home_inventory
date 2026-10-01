@@ -124,6 +124,7 @@ function AddItemForm({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [justAdded, setJustAdded] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -146,10 +147,12 @@ function AddItemForm({
       return;
     }
 
+    // Location and category deliberately stay selected — the common case is
+    // logging several items from the same shelf (often the same category)
+    // in a row, not hopping between locations each time.
+    setJustAdded(name);
     setName("");
     setQuantity("1");
-    setLocationId(null);
-    setCategoryId(null);
     setStatus("idle");
     onCreated();
   }
@@ -162,7 +165,10 @@ function AddItemForm({
       <Input
         placeholder="Item name"
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        onChange={(event) => {
+          setName(event.target.value);
+          setJustAdded(null);
+        }}
         required
       />
       <Input
@@ -177,6 +183,9 @@ function AddItemForm({
       <Button type="submit" disabled={status === "saving" || !canSubmit}>
         {status === "saving" ? "Adding..." : "Add item"}
       </Button>
+      {justAdded && (
+        <p className="text-sm text-green-600">Added "{justAdded}".</p>
+      )}
       {status === "error" && (
         <p className="text-destructive text-sm">{errorMessage}</p>
       )}
