@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { LocationLevel } from "@/lib/locations";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 type Option = { id: string; name: string };
+type Options = Option[] | "loading";
 
 async function fetchChildren(
   householdId: string,
@@ -30,7 +25,7 @@ async function fetchChildren(
   return data;
 }
 
-/** Picks a shelf or box (the only levels an item can attach to) via cascading selects. */
+/** Picks a shelf or box (the only levels an item can attach to) via a few short tap-lists. */
 export function LocationPicker({
   householdId,
   onChange,
@@ -38,10 +33,10 @@ export function LocationPicker({
   householdId: string;
   onChange: (locationId: string | null) => void;
 }) {
-  const [rooms, setRooms] = useState<Option[]>([]);
-  const [units, setUnits] = useState<Option[]>([]);
-  const [shelves, setShelves] = useState<Option[]>([]);
-  const [boxes, setBoxes] = useState<Option[]>([]);
+  const [rooms, setRooms] = useState<Options>("loading");
+  const [units, setUnits] = useState<Options>("loading");
+  const [shelves, setShelves] = useState<Options>("loading");
+  const [boxes, setBoxes] = useState<Options>("loading");
 
   const [roomId, setRoomId] = useState<string | null>(null);
   const [unitId, setUnitId] = useState<string | null>(null);
@@ -54,21 +49,21 @@ export function LocationPicker({
 
   useEffect(() => {
     setUnitId(null);
-    setUnits([]);
+    setUnits("loading");
     if (!roomId) return;
     fetchChildren(householdId, roomId, "unit").then(setUnits);
   }, [householdId, roomId]);
 
   useEffect(() => {
     setShelfId(null);
-    setShelves([]);
+    setShelves("loading");
     if (!unitId) return;
     fetchChildren(householdId, unitId, "shelf").then(setShelves);
   }, [householdId, unitId]);
 
   useEffect(() => {
     setBoxId(null);
-    setBoxes([]);
+    setBoxes("loading");
     if (!shelfId) return;
     fetchChildren(householdId, shelfId, "box").then(setBoxes);
   }, [householdId, shelfId]);
@@ -79,32 +74,36 @@ export function LocationPicker({
   }, [boxId, shelfId]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <LevelSelect
-        placeholder="Room"
+    <div className="flex flex-col gap-3">
+      <LevelButtons
+        label="Room"
+        emptyMessage="No rooms yet — add one from the Locations tab."
         options={rooms}
         value={roomId}
         onChange={setRoomId}
       />
       {roomId && (
-        <LevelSelect
-          placeholder="Unit"
+        <LevelButtons
+          label="Unit"
+          emptyMessage="No units in this room."
           options={units}
           value={unitId}
           onChange={setUnitId}
         />
       )}
       {unitId && (
-        <LevelSelect
-          placeholder="Shelf"
+        <LevelButtons
+          label="Shelf"
+          emptyMessage="No shelves in this unit."
           options={shelves}
           value={shelfId}
           onChange={setShelfId}
         />
       )}
-      {shelfId && boxes.length > 0 && (
-        <LevelSelect
-          placeholder="Box (optional)"
+      {shelfId && Array.isArray(boxes) && boxes.length > 0 && (
+        <LevelButtons
+          label="Box (optional)"
+          emptyMessage=""
           options={boxes}
           value={boxId}
           onChange={setBoxId}
@@ -114,33 +113,49 @@ export function LocationPicker({
   );
 }
 
-function LevelSelect({
-  placeholder,
+function LevelButtons({
+  label,
+  emptyMessage,
   options,
   value,
   onChange,
 }: {
-  placeholder: string;
-  options: Option[];
+  label: string;
+  emptyMessage: string;
+  options: Options;
   value: string | null;
   onChange: (value: string | null) => void;
 }) {
+  if (options === "loading") {
+    return (
+      <p className="text-muted-foreground text-sm">Loading {label.toLowerCase()}s...</p>
+    );
+  }
+
+  if (options.length === 0) {
+    return <p className="text-muted-foreground text-sm">{emptyMessage}</p>;
+  }
+
   return (
-    <Select
-      value={value ?? ""}
-      onValueChange={(v) => onChange(v || null)}
-      items={options.map((option) => ({ value: option.id, label: option.name }))}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
+    <div className="flex flex-col gap-1.5">
+      <p className="text-muted-foreground text-sm">{label}:</p>
+      <div className="flex flex-wrap gap-2">
         {options.map((option) => (
-          <SelectItem key={option.id} value={option.id}>
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-sm",
+              value === option.id
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background",
+            )}
+          >
             {option.name}
-          </SelectItem>
+          </button>
         ))}
-      </SelectContent>
-    </Select>
+      </div>
+    </div>
   );
 }
