@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { ItemNameInput } from "@/components/ItemNameInput";
 import { LocationPicker } from "@/components/LocationPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,11 +163,10 @@ function AddItemForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-t pt-4">
       <p className="text-muted-foreground text-sm">Add an item.</p>
-      <Input
-        placeholder="Item name"
+      <ItemNameInput
         value={name}
-        onChange={(event) => {
-          setName(event.target.value);
+        onChange={(value) => {
+          setName(value);
           setJustAdded(null);
         }}
         required
@@ -257,12 +257,7 @@ function EditItemForm({
   return (
     <div className="flex flex-col gap-4 p-4">
       <form onSubmit={handleSave} className="flex flex-col gap-2">
-        <Input
-          placeholder="Item name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          required
-        />
+        <ItemNameInput value={name} onChange={setName} required />
         <Input
           type="number"
           min={1}
