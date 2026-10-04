@@ -12,6 +12,7 @@ import {
 import {
   type LocationLevel,
   ROOM_PRESETS,
+  SHELF_PRESETS,
   UNIT_TYPES,
   levelLabel,
   unitTypeLabel,
@@ -146,6 +147,13 @@ export function LocationList({
       )}
       {level === "unit" && (
         <UnitPresets
+          householdId={householdId}
+          parentId={parentId}
+          onCreated={fetchRows}
+        />
+      )}
+      {level === "shelf" && (
+        <ShelfPresets
           householdId={householdId}
           parentId={parentId}
           onCreated={fetchRows}
@@ -363,6 +371,57 @@ function UnitPresets({
   );
 }
 
+function ShelfPresets({
+  householdId,
+  parentId,
+  onCreated,
+}: {
+  householdId: string;
+  parentId: string | null;
+  onCreated: () => void;
+}) {
+  const [pending, setPending] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function addShelf(name: string) {
+    setPending(name);
+    const { error } = await supabase.from("locations").insert({
+      household_id: householdId,
+      parent_id: parentId,
+      level: "shelf",
+      name,
+    });
+    setPending(null);
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    onCreated();
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-muted-foreground text-sm">Quick add a shelf:</p>
+      <div className="flex flex-wrap gap-2">
+        {SHELF_PRESETS.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            disabled={pending === preset}
+            onClick={() => addShelf(preset)}
+            className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            {pending === preset ? "Adding..." : preset}
+          </button>
+        ))}
+      </div>
+      {errorMessage && (
+        <p className="text-destructive text-sm">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
 function AddLocationForm({
   householdId,
   parentId,
@@ -408,7 +467,7 @@ function AddLocationForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      {(level === "room" || level === "unit") && (
+      {(level === "room" || level === "unit" || level === "shelf") && (
         <p className="text-muted-foreground text-sm">
           Or add a custom {levelLabel(level).toLowerCase()}:
         </p>

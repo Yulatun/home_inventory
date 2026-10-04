@@ -41,6 +41,14 @@ export function unitTypeIcon(unitType: string | null): LucideIcon {
   return (unitType && UNIT_TYPE_ICONS[unitType]) || BoxIcon;
 }
 
+export const SHELF_PRESETS = [
+  "Top Shelf",
+  "Upper Shelf",
+  "Middle Shelf",
+  "Lower Shelf",
+  "Bottom Shelf",
+] as const;
+
 export const ROOM_PRESETS = [
   "Bedroom",
   "Kitchen",
