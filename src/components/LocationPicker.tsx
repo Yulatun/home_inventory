@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
-import type { LocationLevel } from "@/lib/locations";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { type LocationLevel, UNIT_TYPES } from "@/lib/locations";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+
+const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
 
 type Option = { id: string; name: string };
 type Options = Option[] | "loading";
@@ -42,6 +46,9 @@ export function LocationPicker({
   const [unitId, setUnitId] = useState<string | null>(null);
   const [shelfId, setShelfId] = useState<string | null>(null);
   const [boxId, setBoxId] = useState<string | null>(null);
+  // Set when a unit is created from here, so its auto-created "No Shelf"
+  // gets selected and the item can be saved without another tap.
+  const pickOnlyShelf = useRef(false);
 
   useEffect(() => {
     fetchChildren(householdId, null, "room").then(setRooms);
@@ -58,8 +65,18 @@ export function LocationPicker({
     setShelfId(null);
     setShelves("loading");
     if (!unitId) return;
-    fetchChildren(householdId, unitId, "shelf").then(setShelves);
+    fetchChildren(householdId, unitId, "shelf").then((rows) => {
+      setShelves(rows);
+      if (pickOnlyShelf.current && rows.length === 1) setShelfId(rows[0].id);
+      pickOnlyShelf.current = false;
+    });
   }, [householdId, unitId]);
+
+  function handleUnitCreated(unit: Option) {
+    setUnits((prev) => (prev === "loading" ? [unit] : [...prev, unit]));
+    pickOnlyShelf.current = true;
+    setUnitId(unit.id);
+  }
 
   useEffect(() => {
     setBoxId(null);
@@ -91,6 +108,9 @@ export function LocationPicker({
           onChange={setUnitId}
         />
       )}
+      {roomId && units !== "loading" && (
+        <NewUnit householdId={householdId} roomId={roomId} onCreated={handleUnitCreated} />
+      )}
       {unitId && (
         <LevelButtons
           label="Shelf"
@@ -108,6 +128,96 @@ export function LocationPicker({
           value={boxId}
           onChange={setBoxId}
         />
+      )}
+    </div>
+  );
+}
+
+/** Lets the user add a missing unit to the chosen room without leaving the item form. */
+function NewUnit({
+  householdId,
+  roomId,
+  onCreated,
+}: {
+  householdId: string;
+  roomId: string;
+  onCreated: (unit: Option) => void;
+}) {
+  const [customName, setCustomName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function create(name: string, unitType: string) {
+    setCreating(true);
+    setErrorMessage("");
+    const { data, error } = await supabase
+      .from("locations")
+      .insert({
+        household_id: householdId,
+        parent_id: roomId,
+        level: "unit",
+        name,
+        unit_type: unitType,
+      })
+      .select("id, name")
+      .single();
+    setCreating(false);
+
+    if (error) {
+      setErrorMessage(error.message);
+      return;
+    }
+    onCreated(data);
+  }
+
+  async function handleAddCustom() {
+    const trimmed = customName.trim();
+    if (!trimmed) return;
+    await create(trimmed, "other");
+    setCustomName("");
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-muted-foreground text-sm">Not listed? Add a unit:</p>
+      <div className="flex flex-wrap gap-2">
+        {UNIT_PRESETS.map((type) => (
+          <button
+            key={type.value}
+            type="button"
+            disabled={creating}
+            onClick={() => create(type.label, type.value)}
+            className="text-muted-foreground rounded-full border border-dashed px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            + {type.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          placeholder="Or type a unit name"
+          value={customName}
+          onChange={(event) => setCustomName(event.target.value)}
+          onKeyDown={(event) => {
+            // This sits inside the item form; Enter should add the unit, not the item.
+            if (event.key === "Enter") {
+              event.preventDefault();
+              handleAddCustom();
+            }
+          }}
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleAddCustom}
+          disabled={creating || customName.trim() === ""}
+        >
+          Add
+        </Button>
+      </div>
+      {errorMessage && (
+        <p className="text-destructive text-sm">{errorMessage}</p>
       )}
     </div>
   );
