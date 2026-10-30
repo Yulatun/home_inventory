@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useHousehold } from "@/context/household";
 import { supabase } from "@/lib/supabase";
@@ -10,12 +10,20 @@ type ItemRow = {
   locations: { name: string } | null;
 };
 
-export function SearchScreen() {
+export function SearchScreen({ active }: { active: boolean }) {
   const household = useHousehold();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ItemRow[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Focus only once this tab is showing: autoFocus on an off-screen carousel
+  // slide makes the browser scroll the carousel viewport to it, desyncing
+  // the slides from the tab bar. preventScroll leaves positioning to Embla.
+  useEffect(() => {
+    if (active) inputRef.current?.focus({ preventScroll: true });
+  }, [active]);
 
   async function handleChange(value: string) {
     setQuery(value);
@@ -49,10 +57,10 @@ export function SearchScreen() {
     <div className="flex flex-col gap-4 p-4">
       <h1 className="font-semibold">Search</h1>
       <Input
+        ref={inputRef}
         placeholder="Search items by name..."
         value={query}
         onChange={(event) => handleChange(event.target.value)}
-        autoFocus
       />
 
       {status === "loading" && (

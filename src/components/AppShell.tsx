@@ -48,7 +48,7 @@ export function AppShell({ session }: { session: Session }) {
             <ItemsScreen session={session} />
           </div>
           <div className="h-full min-w-0 flex-[0_0_100%] overflow-y-auto">
-            <SearchScreen />
+            <SearchScreen active={TABS[activeIndex].id === "search"} />
           </div>
         </div>
       </div>
