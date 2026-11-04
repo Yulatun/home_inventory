@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/errors";
 
 export function CreateHouseholdForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
@@ -15,7 +16,7 @@ export function CreateHouseholdForm({ onCreated }: { onCreated: () => void }) {
       household_name: name,
     });
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, "You already belong to a household. Reload the page to open it."));
       setStatus("error");
       return;
     }

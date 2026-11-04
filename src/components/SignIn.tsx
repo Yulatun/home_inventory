@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/errors";
 
 export function SignIn() {
   const [email, setEmail] = useState("");
@@ -15,7 +16,7 @@ export function SignIn() {
     setStatus("sending");
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }

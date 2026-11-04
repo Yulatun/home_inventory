@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { CATEGORY_PRESETS } from "@/lib/categories";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 type Category = { id: string; name: string };
 
@@ -28,7 +29,7 @@ export function CategoryPicker({
       .order("name");
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       return;
     }
     setCategories(data);
@@ -62,7 +63,7 @@ export function CategoryPicker({
     setCreating(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, "A category with that name already exists."));
       return;
     }
     setCategories((prev) => (prev === "loading" ? prev : [...prev, data]));

@@ -19,6 +19,7 @@ import {
 } from "@/lib/roomFeatures";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 type PlanUnit = LocationRow & { canvas_x: number | null; canvas_y: number | null };
 type RoomFeature = { id: string; type: FeatureType; wall: Wall; position: number };
@@ -65,7 +66,7 @@ export function RoomPlan({
       .returns<PlanUnit[]>();
 
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error));
       return;
     }
     setUnits(data);
@@ -81,7 +82,7 @@ export function RoomPlan({
       .returns<RoomFeature[]>();
 
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error));
       return;
     }
     setFeatures(data);
@@ -372,7 +373,7 @@ function AddFeatureForm({
     });
     setStatus("idle");
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }

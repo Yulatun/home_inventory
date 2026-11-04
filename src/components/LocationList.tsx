@@ -19,6 +19,11 @@ import {
 } from "@/lib/locations";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
+
+// The only unique constraint adding or renaming a location can hit: one
+// shelf named exactly "No Shelf" per unit (it's the auto-created placeholder).
+const NO_SHELF_TAKEN = 'This unit already has a "No Shelf". Pick a different name.';
 
 export type LocationRow = {
   id: string;
@@ -56,7 +61,7 @@ export function LocationList({
 
     const { data, error } = await query;
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error));
       return;
     }
     setRows(data);
@@ -190,7 +195,7 @@ function RenameForm({
       .eq("id", row.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
       setStatus("error");
       return;
     }
@@ -234,7 +239,7 @@ function DeleteConfirm({
     setStatus("deleting");
     const { error } = await supabase.from("locations").delete().eq("id", row.id);
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }
@@ -288,7 +293,7 @@ function RoomPresets({
     });
     setPending(null);
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
       return;
     }
     onCreated();
@@ -342,7 +347,7 @@ function UnitPresets({
     });
     setPending(null);
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
       return;
     }
     onCreated();
@@ -393,7 +398,7 @@ function ShelfPresets({
     });
     setPending(null);
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
       return;
     }
     onCreated();
@@ -451,7 +456,7 @@ function AddLocationForm({
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
       setStatus("error");
       return;
     }

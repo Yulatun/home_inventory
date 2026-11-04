@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useHousehold } from "@/context/household";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/errors";
 
 type ItemRow = {
   id: string;
@@ -45,7 +46,7 @@ export function SearchScreen({ active }: { active: boolean }) {
       .returns<ItemRow[]>();
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useHousehold } from "@/context/household";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/errors";
 
 type ItemRow = {
   id: string;
@@ -33,7 +34,7 @@ export function ItemsScreen({ session }: { session: Session }) {
       .returns<ItemRow[]>();
 
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error));
       return;
     }
     setItems(data);
@@ -143,7 +144,7 @@ function AddItemForm({
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }
@@ -228,7 +229,7 @@ function EditItemForm({
       .eq("id", item.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }
@@ -247,7 +248,7 @@ function EditItemForm({
       .eq("id", item.id);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       setStatus("error");
       return;
     }

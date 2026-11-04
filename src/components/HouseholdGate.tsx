@@ -5,6 +5,7 @@ import { CenteredLayout } from "@/components/CenteredLayout";
 import { CreateHouseholdForm } from "@/components/CreateHouseholdForm";
 import { HouseholdProvider } from "@/context/household";
 import { supabase } from "@/lib/supabase";
+import { friendlyError } from "@/lib/errors";
 
 type Household = { id: string; name: string };
 
@@ -24,7 +25,7 @@ export function HouseholdGate({ session }: { session: Session }) {
       .maybeSingle();
 
     if (error) {
-      setState({ type: "error", message: error.message });
+      setState({ type: "error", message: friendlyError(error) });
       return;
     }
     setState(data ? { type: "found", household: data } : { type: "none" });

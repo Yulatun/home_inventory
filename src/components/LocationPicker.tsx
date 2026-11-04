@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { type LocationLevel, UNIT_TYPES } from "@/lib/locations";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
 
@@ -49,27 +50,33 @@ export function LocationPicker({
   // Set when a unit is created from here, so its auto-created "No Shelf"
   // gets selected and the item can be saved without another tap.
   const pickOnlyShelf = useRef(false);
+  const [loadError, setLoadError] = useState("");
+  const showLoadError = (error: { message: string; code?: string }) =>
+    setLoadError(friendlyError(error));
 
   useEffect(() => {
-    fetchChildren(householdId, null, "room").then(setRooms);
+    setLoadError("");
+    fetchChildren(householdId, null, "room").then(setRooms, showLoadError);
   }, [householdId]);
 
   useEffect(() => {
     setUnitId(null);
     setUnits("loading");
     if (!roomId) return;
-    fetchChildren(householdId, roomId, "unit").then(setUnits);
+    setLoadError("");
+    fetchChildren(householdId, roomId, "unit").then(setUnits, showLoadError);
   }, [householdId, roomId]);
 
   useEffect(() => {
     setShelfId(null);
     setShelves("loading");
     if (!unitId) return;
+    setLoadError("");
     fetchChildren(householdId, unitId, "shelf").then((rows) => {
       setShelves(rows);
       if (pickOnlyShelf.current && rows.length === 1) setShelfId(rows[0].id);
       pickOnlyShelf.current = false;
-    });
+    }, showLoadError);
   }, [householdId, unitId]);
 
   function handleUnitCreated(unit: Option) {
@@ -82,7 +89,8 @@ export function LocationPicker({
     setBoxId(null);
     setBoxes("loading");
     if (!shelfId) return;
-    fetchChildren(householdId, shelfId, "box").then(setBoxes);
+    setLoadError("");
+    fetchChildren(householdId, shelfId, "box").then(setBoxes, showLoadError);
   }, [householdId, shelfId]);
 
   useEffect(() => {
@@ -92,6 +100,7 @@ export function LocationPicker({
 
   return (
     <div className="flex flex-col gap-3">
+      {loadError && <p className="text-destructive text-sm">{loadError}</p>}
       <LevelButtons
         label="Room"
         emptyMessage="No rooms yet — add one from the Locations tab."
@@ -171,7 +180,7 @@ function NewUnit({
     setCreating(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(friendlyError(error));
       return false;
     }
     onCreated(data);

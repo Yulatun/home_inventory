@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LocationRow } from "@/components/LocationList";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 type PlanRoom = LocationRow & { canvas_x: number | null; canvas_y: number | null };
 
@@ -41,7 +42,7 @@ export function ApartmentPlan({
       .returns<PlanRoom[]>();
 
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error));
       return;
     }
     setRooms(data);
