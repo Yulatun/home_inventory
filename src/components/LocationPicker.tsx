@@ -150,8 +150,9 @@ function NewUnit({
   // too. A ref, not the state, so two quick presses can't both get through.
   const inFlight = useRef(false);
 
-  async function create(name: string, unitType: string) {
-    if (inFlight.current) return;
+  /** Returns whether the unit was created, so callers keep the user's input otherwise. */
+  async function create(name: string, unitType: string): Promise<boolean> {
+    if (inFlight.current) return false;
     inFlight.current = true;
     setCreating(true);
     setErrorMessage("");
@@ -171,16 +172,16 @@ function NewUnit({
 
     if (error) {
       setErrorMessage(error.message);
-      return;
+      return false;
     }
     onCreated(data);
+    return true;
   }
 
   async function handleAddCustom() {
     const trimmed = customName.trim();
     if (!trimmed) return;
-    await create(trimmed, "other");
-    setCustomName("");
+    if (await create(trimmed, "other")) setCustomName("");
   }
 
   return (
