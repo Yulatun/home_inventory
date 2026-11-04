@@ -146,8 +146,13 @@ function NewUnit({
   const [customName, setCustomName] = useState("");
   const [creating, setCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  // Disabling the buttons doesn't stop Enter in the name box, so guard here
+  // too. A ref, not the state, so two quick presses can't both get through.
+  const inFlight = useRef(false);
 
   async function create(name: string, unitType: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setCreating(true);
     setErrorMessage("");
     const { data, error } = await supabase
@@ -161,6 +166,7 @@ function NewUnit({
       })
       .select("id, name")
       .single();
+    inFlight.current = false;
     setCreating(false);
 
     if (error) {
