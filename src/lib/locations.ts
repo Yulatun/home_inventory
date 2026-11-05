@@ -10,6 +10,7 @@ import {
   Sofa,
   Table2,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export type LocationLevel = "room" | "unit" | "shelf" | "box";
 
@@ -24,6 +25,33 @@ export const UNIT_TYPES = [
   { value: "desk", label: "Desk" },
   { value: "other", label: "Other" },
 ] as const;
+
+/** Unit types offered as one-tap chips; "other" needs a name, so it's the custom box instead. */
+export const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
+
+/**
+ * Adds a unit under a room. Shared by the Locations tab and the item location
+ * picker so both create units the same way; the database trigger then adds
+ * the unit's "No Shelf".
+ */
+export function insertUnit(
+  householdId: string,
+  roomId: string | null,
+  name: string,
+  unitType: string,
+) {
+  return supabase
+    .from("locations")
+    .insert({
+      household_id: householdId,
+      parent_id: roomId,
+      level: "unit",
+      name,
+      unit_type: unitType,
+    })
+    .select("id, name")
+    .single();
+}
 
 const UNIT_TYPE_ICONS: Record<string, LucideIcon> = {
   wardrobe: Archive,

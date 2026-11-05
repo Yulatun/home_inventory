@@ -13,7 +13,9 @@ import {
   type LocationLevel,
   ROOM_PRESETS,
   SHELF_PRESETS,
+  UNIT_PRESETS,
   UNIT_TYPES,
+  insertUnit,
   levelLabel,
   unitTypeLabel,
 } from "@/lib/locations";
@@ -322,8 +324,6 @@ function RoomPresets({
   );
 }
 
-const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
-
 function UnitPresets({
   householdId,
   parentId,
@@ -338,16 +338,10 @@ function UnitPresets({
 
   async function addUnit(type: (typeof UNIT_PRESETS)[number]) {
     setPending(type.value);
-    const { error } = await supabase.from("locations").insert({
-      household_id: householdId,
-      parent_id: parentId,
-      level: "unit",
-      name: type.label,
-      unit_type: type.value,
-    });
+    const { error } = await insertUnit(householdId, parentId, type.label, type.value);
     setPending(null);
     if (error) {
-      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
+      setErrorMessage(friendlyError(error));
       return;
     }
     onCreated();

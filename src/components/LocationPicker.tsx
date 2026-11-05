@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type LocationLevel, UNIT_TYPES } from "@/lib/locations";
+import { type LocationLevel, UNIT_PRESETS, insertUnit } from "@/lib/locations";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { friendlyError } from "@/lib/errors";
-
-const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
 
 type Option = { id: string; name: string };
 type Options = Option[] | "loading";
@@ -215,17 +213,7 @@ function NewUnit({
     inFlight.current = true;
     setCreating(true);
     setErrorMessage("");
-    const { data, error } = await supabase
-      .from("locations")
-      .insert({
-        household_id: householdId,
-        parent_id: roomId,
-        level: "unit",
-        name,
-        unit_type: unitType,
-      })
-      .select("id, name")
-      .single();
+    const { data, error } = await insertUnit(householdId, roomId, name, unitType);
     inFlight.current = false;
     setCreating(false);
 
