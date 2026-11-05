@@ -1,37 +1,32 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AddLocationForm } from "@/components/AddLocationForm";
+import { DeleteConfirm, RenameForm } from "@/components/LocationRowActions";
+import { type Preset, PresetChips } from "@/components/PresetChips";
+import { friendlyError } from "@/lib/errors";
 import {
   type LocationLevel,
+  type LocationRow,
+  NO_SHELF_TAKEN,
   ROOM_PRESETS,
   SHELF_PRESETS,
   UNIT_PRESETS,
-  UNIT_TYPES,
-  insertUnit,
+  insertLocation,
   levelLabel,
   unitTypeLabel,
 } from "@/lib/locations";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { friendlyError } from "@/lib/errors";
 
-// The only unique constraint adding or renaming a location can hit: one
-// shelf named exactly "No Shelf" per unit (it's the auto-created placeholder).
-const NO_SHELF_TAKEN = 'This unit already has a "No Shelf". Pick a different name.';
+const asPresets = (names: readonly string[]): Preset[] =>
+  names.map((name) => ({ value: name, label: name }));
 
-export type LocationRow = {
-  id: string;
-  name: string;
-  level: LocationLevel;
-  unit_type: string | null;
+// Boxes have no presets. A unit preset's value is its unit_type; a room or
+// shelf preset's value is just its name.
+const PRESETS_BY_LEVEL: Partial<Record<LocationLevel, readonly Preset[]>> = {
+  room: asPresets(ROOM_PRESETS),
+  unit: UNIT_PRESETS,
+  shelf: asPresets(SHELF_PRESETS),
 };
 
 export function LocationList({
@@ -149,23 +144,12 @@ export function LocationList({
         </ul>
       )}
 
-      {level === "room" && (
-        <RoomPresets householdId={householdId} onCreated={fetchRows} />
-      )}
-      {level === "unit" && (
-        <UnitPresets
-          householdId={householdId}
-          parentId={parentId}
-          onCreated={fetchRows}
-        />
-      )}
-      {level === "shelf" && (
-        <ShelfPresets
-          householdId={householdId}
-          parentId={parentId}
-          onCreated={fetchRows}
-        />
-      )}
+      <LevelPresets
+        householdId={householdId}
+        parentId={parentId}
+        level={level}
+        onCreated={fetchRows}
+      />
 
       <AddLocationForm
         householdId={householdId}
@@ -177,251 +161,8 @@ export function LocationList({
   );
 }
 
-function RenameForm({
-  row,
-  onDone,
-}: {
-  row: LocationRow;
-  onDone: () => void;
-}) {
-  const [name, setName] = useState(row.name);
-  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setStatus("saving");
-    const { error } = await supabase
-      .from("locations")
-      .update({ name })
-      .eq("id", row.id);
-
-    if (error) {
-      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
-      setStatus("error");
-      return;
-    }
-    onDone();
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-2 py-1">
-      <Input
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        autoFocus
-        required
-      />
-      <Button type="submit" size="sm" disabled={status === "saving"}>
-        Save
-      </Button>
-      <Button type="button" size="sm" variant="outline" onClick={onDone}>
-        Cancel
-      </Button>
-      {status === "error" && (
-        <p className="text-destructive text-xs">{errorMessage}</p>
-      )}
-    </form>
-  );
-}
-
-function DeleteConfirm({
-  row,
-  onDone,
-  onCancel,
-}: {
-  row: LocationRow;
-  onDone: () => void;
-  onCancel: () => void;
-}) {
-  const [status, setStatus] = useState<"idle" | "deleting" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-
-  async function handleDelete() {
-    setStatus("deleting");
-    const { error } = await supabase.from("locations").delete().eq("id", row.id);
-    if (error) {
-      setErrorMessage(friendlyError(error));
-      setStatus("error");
-      return;
-    }
-    onDone();
-  }
-
-  return (
-    <div className="flex flex-1 flex-col gap-2 py-2">
-      <p className="text-sm">
-        Delete "{row.name}"? This also deletes everything nested inside it.
-        Items stored here won't be deleted, but will lose their location.
-      </p>
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="destructive"
-          onClick={handleDelete}
-          disabled={status === "deleting"}
-        >
-          {status === "deleting" ? "Deleting..." : "Delete"}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-      {status === "error" && (
-        <p className="text-destructive text-xs">{errorMessage}</p>
-      )}
-    </div>
-  );
-}
-
-function RoomPresets({
-  householdId,
-  onCreated,
-}: {
-  householdId: string;
-  onCreated: () => void;
-}) {
-  const [pending, setPending] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  async function addRoom(name: string) {
-    setPending(name);
-    const { error } = await supabase.from("locations").insert({
-      household_id: householdId,
-      parent_id: null,
-      level: "room",
-      name,
-    });
-    setPending(null);
-    if (error) {
-      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
-      return;
-    }
-    onCreated();
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-sm">Quick add a room:</p>
-      <div className="flex flex-wrap gap-2">
-        {ROOM_PRESETS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            disabled={pending === preset}
-            onClick={() => addRoom(preset)}
-            className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            {pending === preset ? "Adding..." : preset}
-          </button>
-        ))}
-      </div>
-      {errorMessage && (
-        <p className="text-destructive text-sm">{errorMessage}</p>
-      )}
-    </div>
-  );
-}
-
-function UnitPresets({
-  householdId,
-  parentId,
-  onCreated,
-}: {
-  householdId: string;
-  parentId: string | null;
-  onCreated: () => void;
-}) {
-  const [pending, setPending] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  async function addUnit(type: (typeof UNIT_PRESETS)[number]) {
-    setPending(type.value);
-    const { error } = await insertUnit(householdId, parentId, type.label, type.value);
-    setPending(null);
-    if (error) {
-      setErrorMessage(friendlyError(error));
-      return;
-    }
-    onCreated();
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-sm">Quick add a unit:</p>
-      <div className="flex flex-wrap gap-2">
-        {UNIT_PRESETS.map((type) => (
-          <button
-            key={type.value}
-            type="button"
-            disabled={pending === type.value}
-            onClick={() => addUnit(type)}
-            className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            {pending === type.value ? "Adding..." : type.label}
-          </button>
-        ))}
-      </div>
-      {errorMessage && (
-        <p className="text-destructive text-sm">{errorMessage}</p>
-      )}
-    </div>
-  );
-}
-
-function ShelfPresets({
-  householdId,
-  parentId,
-  onCreated,
-}: {
-  householdId: string;
-  parentId: string | null;
-  onCreated: () => void;
-}) {
-  const [pending, setPending] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  async function addShelf(name: string) {
-    setPending(name);
-    const { error } = await supabase.from("locations").insert({
-      household_id: householdId,
-      parent_id: parentId,
-      level: "shelf",
-      name,
-    });
-    setPending(null);
-    if (error) {
-      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
-      return;
-    }
-    onCreated();
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-muted-foreground text-sm">Quick add a shelf:</p>
-      <div className="flex flex-wrap gap-2">
-        {SHELF_PRESETS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            disabled={pending === preset}
-            onClick={() => addShelf(preset)}
-            className="rounded-full border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            {pending === preset ? "Adding..." : preset}
-          </button>
-        ))}
-      </div>
-      {errorMessage && (
-        <p className="text-destructive text-sm">{errorMessage}</p>
-      )}
-    </div>
-  );
-}
-
-function AddLocationForm({
+/** Quick-add chips for the levels that have presets (rooms, units, shelves). */
+function LevelPresets({
   householdId,
   parentId,
   level,
@@ -432,75 +173,18 @@ function AddLocationForm({
   level: LocationLevel;
   onCreated: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [unitType, setUnitType] = useState("");
-  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setStatus("saving");
-
-    const { error } = await supabase.from("locations").insert({
-      household_id: householdId,
-      parent_id: parentId,
-      level,
-      name,
-      ...(level === "unit" ? { unit_type: unitType } : {}),
-    });
-
-    if (error) {
-      setErrorMessage(friendlyError(error, NO_SHELF_TAKEN));
-      setStatus("error");
-      return;
-    }
-
-    setName("");
-    setUnitType("");
-    setStatus("idle");
-    onCreated();
-  }
-
-  const needsUnitType = level === "unit";
-  const canSubmit = name.trim() !== "" && (!needsUnitType || unitType !== "");
+  const presets = PRESETS_BY_LEVEL[level];
+  if (!presets) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      {(level === "room" || level === "unit" || level === "shelf") && (
-        <p className="text-muted-foreground text-sm">
-          Or add a custom {levelLabel(level).toLowerCase()}:
-        </p>
-      )}
-      <Input
-        placeholder={`${levelLabel(level)} name`}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        required
-      />
-      {needsUnitType && (
-        <Select
-          value={unitType}
-          onValueChange={(value) => setUnitType(value ?? "")}
-          items={UNIT_TYPES}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="What kind of furniture?" />
-          </SelectTrigger>
-          <SelectContent>
-            {UNIT_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-      <Button type="submit" disabled={status === "saving" || !canSubmit}>
-        {status === "saving" ? "Adding..." : `Add ${levelLabel(level).toLowerCase()}`}
-      </Button>
-      {status === "error" && (
-        <p className="text-destructive text-sm">{errorMessage}</p>
-      )}
-    </form>
+    <PresetChips
+      title={`Quick add a ${levelLabel(level).toLowerCase()}:`}
+      presets={presets}
+      create={(preset) =>
+        insertLocation(householdId, parentId, level, preset.label, preset.value)
+      }
+      duplicateMessage={level === "shelf" ? NO_SHELF_TAKEN : undefined}
+      onCreated={onCreated}
+    />
   );
 }

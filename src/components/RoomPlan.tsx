@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LocationRow } from "@/components/LocationList";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { unitTypeIcon, unitTypeLabel } from "@/lib/locations";
+import { type LocationRow, unitTypeIcon, unitTypeLabel } from "@/lib/locations";
 import {
   FEATURE_EMOJI,
   FEATURE_TYPES,

@@ -1,8 +1,8 @@
 import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
-import { type LocationRow, LocationList } from "@/components/LocationList";
+import { LocationList } from "@/components/LocationList";
 import { useHousehold } from "@/context/household";
-import { nextLevel } from "@/lib/locations";
+import { type LocationRow, nextLevel } from "@/lib/locations";
 
 export function LocationsScreen() {
   const household = useHousehold();

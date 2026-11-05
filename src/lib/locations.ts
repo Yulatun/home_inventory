@@ -29,25 +29,36 @@ export const UNIT_TYPES = [
 /** Unit types offered as one-tap chips; "other" needs a name, so it's the custom box instead. */
 export const UNIT_PRESETS = UNIT_TYPES.filter((type) => type.value !== "other");
 
+export type LocationRow = {
+  id: string;
+  name: string;
+  level: LocationLevel;
+  unit_type: string | null;
+};
+
+// The only unique constraint adding or renaming a location can hit: one
+// shelf named exactly "No Shelf" per unit (it's the auto-created placeholder).
+export const NO_SHELF_TAKEN = 'This unit already has a "No Shelf". Pick a different name.';
+
 /**
- * Adds a unit under a room. Shared by the Locations tab and the item location
- * picker so both create units the same way; the database trigger then adds
- * the unit's "No Shelf".
+ * Adds a location — the one place the app inserts into `locations`. Database
+ * triggers then add the defaults: a room's "No Unit", a unit's "No Shelf".
  */
-export function insertUnit(
+export function insertLocation(
   householdId: string,
-  roomId: string | null,
+  parentId: string | null,
+  level: LocationLevel,
   name: string,
-  unitType: string,
+  unitType?: string,
 ) {
   return supabase
     .from("locations")
     .insert({
       household_id: householdId,
-      parent_id: roomId,
-      level: "unit",
+      parent_id: parentId,
+      level,
       name,
-      unit_type: unitType,
+      ...(level === "unit" ? { unit_type: unitType } : {}),
     })
     .select("id, name")
     .single();
