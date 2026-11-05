@@ -47,41 +47,67 @@ export function LocationPicker({
   const [unitId, setUnitId] = useState<string | null>(null);
   const [shelfId, setShelfId] = useState<string | null>(null);
   const [boxId, setBoxId] = useState<string | null>(null);
-  // Set when a unit is created from here, so its auto-created "No Shelf"
-  // gets selected and the item can be saved without another tap.
-  const pickOnlyShelf = useRef(false);
+  // The unit just created from here, so its auto-created "No Shelf" gets
+  // selected and the item can be saved without another tap.
+  const createdUnitId = useRef<string | null>(null);
   const [loadError, setLoadError] = useState("");
-  const showLoadError = (error: { message: string; code?: string }) =>
-    setLoadError(friendlyError(error));
+
+  /**
+   * Fetches one level and hands the rows to `onRows`, unless the selection
+   * changed meanwhile: then the result is stale and dropped, so a slow answer
+   * for a previous room/unit/shelf can't overwrite or pre-select the current one.
+   * Returns the effect cleanup that marks it stale.
+   */
+  function loadLevel(
+    parentId: string | null,
+    level: LocationLevel,
+    onRows: (rows: Option[]) => void,
+  ) {
+    let stale = false;
+    setLoadError("");
+    fetchChildren(householdId, parentId, level).then(
+      (rows) => {
+        if (!stale) onRows(rows);
+      },
+      (error) => {
+        if (!stale) setLoadError(friendlyError(error));
+      },
+    );
+    return () => {
+      stale = true;
+    };
+  }
 
   useEffect(() => {
-    setLoadError("");
-    fetchChildren(householdId, null, "room").then(setRooms, showLoadError);
+    return loadLevel(null, "room", setRooms);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId]);
 
   useEffect(() => {
     setUnitId(null);
     setUnits("loading");
     if (!roomId) return;
-    setLoadError("");
-    fetchChildren(householdId, roomId, "unit").then(setUnits, showLoadError);
+    return loadLevel(roomId, "unit", setUnits);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId, roomId]);
 
   useEffect(() => {
     setShelfId(null);
     setShelves("loading");
     if (!unitId) return;
-    setLoadError("");
-    fetchChildren(householdId, unitId, "shelf").then((rows) => {
+    return loadLevel(unitId, "shelf", (rows) => {
       setShelves(rows);
-      if (pickOnlyShelf.current && rows.length === 1) setShelfId(rows[0].id);
-      pickOnlyShelf.current = false;
-    }, showLoadError);
+      if (createdUnitId.current === unitId) {
+        createdUnitId.current = null;
+        if (rows.length === 1) setShelfId(rows[0].id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId, unitId]);
 
   function handleUnitCreated(unit: Option) {
     setUnits((prev) => (prev === "loading" ? [unit] : [...prev, unit]));
-    pickOnlyShelf.current = true;
+    createdUnitId.current = unit.id;
     setUnitId(unit.id);
   }
 
@@ -89,8 +115,8 @@ export function LocationPicker({
     setBoxId(null);
     setBoxes("loading");
     if (!shelfId) return;
-    setLoadError("");
-    fetchChildren(householdId, shelfId, "box").then(setBoxes, showLoadError);
+    return loadLevel(shelfId, "box", setBoxes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId, shelfId]);
 
   useEffect(() => {
