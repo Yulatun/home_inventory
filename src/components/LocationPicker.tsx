@@ -48,8 +48,12 @@ export function LocationPicker({
   const [shelfId, setShelfId] = useState<string | null>(null);
   const [boxId, setBoxId] = useState<string | null>(null);
   // The unit just created from here, so its auto-created "No Shelf" gets
-  // selected and the item can be saved without another tap.
-  const createdUnitId = useRef<string | null>(null);
+  // selected and the item can be saved without another tap, and so a units
+  // fetch that read the table before the insert still lists it.
+  const createdUnit = useRef<{ unit: Option; roomId: string } | null>(null);
+  // Read by handleUnitCreated, which runs after an await and so can't trust
+  // the roomId captured when the insert started.
+  const currentRoomId = useRef<string | null>(null);
   const [loadError, setLoadError] = useState("");
 
   /**
@@ -84,10 +88,16 @@ export function LocationPicker({
   }, [householdId]);
 
   useEffect(() => {
+    currentRoomId.current = roomId;
     setUnitId(null);
     setUnits("loading");
     if (!roomId) return;
-    return loadLevel(roomId, "unit", setUnits);
+    return loadLevel(roomId, "unit", (rows) => {
+      const created = createdUnit.current;
+      const missing =
+        created?.roomId === roomId && !rows.some((row) => row.id === created.unit.id);
+      setUnits(missing ? [...rows, created.unit] : rows);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId, roomId]);
 
@@ -97,17 +107,25 @@ export function LocationPicker({
     if (!unitId) return;
     return loadLevel(unitId, "shelf", (rows) => {
       setShelves(rows);
-      if (createdUnitId.current === unitId) {
-        createdUnitId.current = null;
+      if (createdUnit.current?.unit.id === unitId) {
+        createdUnit.current = null;
         if (rows.length === 1) setShelfId(rows[0].id);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId, unitId]);
 
-  function handleUnitCreated(unit: Option) {
-    setUnits((prev) => (prev === "loading" ? [unit] : [...prev, unit]));
-    createdUnitId.current = unit.id;
+  function handleUnitCreated(unit: Option, forRoomId: string) {
+    // The user switched room while the insert was running: the unit exists in
+    // the room it was made for, but it doesn't belong in this room's list.
+    if (forRoomId !== currentRoomId.current) return;
+    // A units fetch for this room may already have listed it (after switching
+    // away and back mid-insert), so don't add it twice.
+    setUnits((prev) => {
+      if (prev === "loading") return [unit];
+      return prev.some((u) => u.id === unit.id) ? prev : [...prev, unit];
+    });
+    createdUnit.current = { unit, roomId: forRoomId };
     setUnitId(unit.id);
   }
 
@@ -144,7 +162,13 @@ export function LocationPicker({
         />
       )}
       {roomId && units !== "loading" && (
-        <NewUnit householdId={householdId} roomId={roomId} onCreated={handleUnitCreated} />
+        // Keyed by room so a typed name or error never carries over to another room.
+        <NewUnit
+          key={roomId}
+          householdId={householdId}
+          roomId={roomId}
+          onCreated={handleUnitCreated}
+        />
       )}
       {unitId && (
         <LevelButtons
@@ -176,7 +200,7 @@ function NewUnit({
 }: {
   householdId: string;
   roomId: string;
-  onCreated: (unit: Option) => void;
+  onCreated: (unit: Option, forRoomId: string) => void;
 }) {
   const [customName, setCustomName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -209,7 +233,7 @@ function NewUnit({
       setErrorMessage(friendlyError(error));
       return false;
     }
-    onCreated(data);
+    onCreated(data, roomId);
     return true;
   }
 
