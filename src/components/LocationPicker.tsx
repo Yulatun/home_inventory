@@ -200,6 +200,9 @@ function NewUnit({
   roomId: string;
   onCreated: (unit: Option, forRoomId: string) => void;
 }) {
+  // Collapsed by default: the chips would otherwise sit between the unit and
+  // shelf lists and push the rest of the form down on a phone.
+  const [open, setOpen] = useState(false);
   const [customName, setCustomName] = useState("");
   const [creating, setCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -221,8 +224,15 @@ function NewUnit({
       setErrorMessage(friendlyError(error));
       return false;
     }
+    setOpen(false);
     onCreated(data, roomId);
     return true;
+  }
+
+  function close() {
+    setOpen(false);
+    setCustomName("");
+    setErrorMessage("");
   }
 
   async function handleAddCustom() {
@@ -231,9 +241,33 @@ function NewUnit({
     if (await create(trimmed, "other")) setCustomName("");
   }
 
+  if (!open) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-muted-foreground rounded-full border border-dashed px-3 py-1.5 text-sm"
+        >
+          + Add unit
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-muted-foreground text-sm">Not listed? Add a unit:</p>
+      <div className="flex items-center justify-between">
+        <p className="text-muted-foreground text-sm">Add a unit:</p>
+        <button
+          type="button"
+          onClick={close}
+          disabled={creating}
+          className="text-muted-foreground text-sm underline disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
       <div className="flex flex-wrap gap-2">
         {UNIT_PRESETS.map((type) => (
           <button
