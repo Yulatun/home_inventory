@@ -36,6 +36,41 @@ export type LocationRow = {
   unit_type: string | null;
 };
 
+/** A room or unit as drawn on a floor plan: null coordinates mean "not placed yet". */
+export type PlanLocation = LocationRow & { canvas_x: number | null; canvas_y: number | null };
+
+const PLAN_COLUMNS = "id, name, level, unit_type, canvas_x, canvas_y";
+
+export function fetchPlanRooms(householdId: string) {
+  return supabase
+    .from("locations")
+    .select(PLAN_COLUMNS)
+    .eq("household_id", householdId)
+    .eq("level", "room")
+    .order("created_at")
+    .returns<PlanLocation[]>();
+}
+
+/** A room's real furniture: its auto-created "No Unit" isn't drawn on the plan. */
+export function fetchPlanUnits(householdId: string, roomId: string) {
+  return supabase
+    .from("locations")
+    .select(PLAN_COLUMNS)
+    .eq("household_id", householdId)
+    .eq("level", "unit")
+    .eq("parent_id", roomId)
+    .neq("unit_type", "nounit")
+    .order("created_at")
+    .returns<PlanLocation[]>();
+}
+
+export function saveCanvasPosition(id: string, position: { x: number; y: number }) {
+  return supabase
+    .from("locations")
+    .update({ canvas_x: position.x, canvas_y: position.y })
+    .eq("id", id);
+}
+
 // The only unique constraint adding or renaming a location can hit: one
 // shelf named exactly "No Shelf" per unit (it's the auto-created placeholder).
 export const NO_SHELF_TAKEN = 'This unit already has a "No Shelf". Pick a different name.';
