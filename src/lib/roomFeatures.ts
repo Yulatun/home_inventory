@@ -48,8 +48,10 @@ export function insertRoomFeature(
     .insert({ household_id: householdId, room_id: roomId, type, wall, position: 0.5 });
 }
 
-export function saveFeaturePosition(id: string, position: number) {
-  return supabase.from("room_features").update({ position }).eq("id", id);
+// async on purpose: a Supabase query only runs once it's awaited, and this is
+// called fire-and-forget at the end of a drag.
+export async function saveFeaturePosition(id: string, position: number) {
+  return await supabase.from("room_features").update({ position }).eq("id", id);
 }
 
 export function deleteRoomFeature(id: string) {

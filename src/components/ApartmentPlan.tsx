@@ -15,6 +15,7 @@ export function ApartmentPlan({
 }) {
   const [rooms, setRooms] = useState<PlanLocation[] | "loading">("loading");
   const [error, setError] = useState("");
+  const [saveError, setSaveError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchRooms = useCallback(async () => {
@@ -47,19 +48,23 @@ export function ApartmentPlan({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="bg-muted/20 relative mx-auto aspect-square w-full max-w-sm border-2"
-    >
-      {rooms.map((room, index) => (
-        <RoomCard
-          key={room.id}
-          room={room}
-          index={index}
-          containerRef={containerRef}
-          onOpen={() => onOpenRoom(room)}
-        />
-      ))}
+    <div className="flex flex-col gap-2">
+      {saveError && <p className="text-destructive text-sm">{saveError}</p>}
+      <div
+        ref={containerRef}
+        className="bg-muted/20 relative mx-auto aspect-square w-full max-w-sm border-2"
+      >
+        {rooms.map((room, index) => (
+          <RoomCard
+            key={room.id}
+            room={room}
+            index={index}
+            containerRef={containerRef}
+            onOpen={() => onOpenRoom(room)}
+            onSaveError={setSaveError}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -70,11 +75,13 @@ function RoomCard({
   index,
   containerRef,
   onOpen,
+  onSaveError,
 }: {
   room: PlanLocation;
   index: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onOpen: () => void;
+  onSaveError: (message: string) => void;
 }) {
   const { pos, dragging, handlers } = usePlanCard({
     location: room,
@@ -82,6 +89,7 @@ function RoomCard({
     size: CARD_SIZE,
     containerRef,
     onOpen,
+    onSaveError,
   });
 
   return (

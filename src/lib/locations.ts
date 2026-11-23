@@ -64,8 +64,10 @@ export function fetchPlanUnits(householdId: string, roomId: string) {
     .returns<PlanLocation[]>();
 }
 
-export function saveCanvasPosition(id: string, position: { x: number; y: number }) {
-  return supabase
+// async on purpose: a Supabase query only runs once it's awaited, so a plain
+// `return supabase...` would silently do nothing for callers that don't await.
+export async function saveCanvasPosition(id: string, position: { x: number; y: number }) {
+  return await supabase
     .from("locations")
     .update({ canvas_x: position.x, canvas_y: position.y })
     .eq("id", id);

@@ -24,6 +24,8 @@ export function RoomPlan({
   const [units, setUnits] = useState<PlanLocation[] | "loading">("loading");
   const [features, setFeatures] = useState<RoomFeature[] | "loading">("loading");
   const [error, setError] = useState("");
+  // Failed moves or deletes: shown above the plan, which itself stays usable.
+  const [saveError, setSaveError] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchUnits = useCallback(async () => {
@@ -50,7 +52,8 @@ export function RoomPlan({
   }, [fetchUnits, fetchFeatures]);
 
   async function handleDeleteFeature(id: string) {
-    await deleteRoomFeature(id);
+    const { error } = await deleteRoomFeature(id);
+    setSaveError(error ? friendlyError(error) : "");
     fetchFeatures();
   }
 
@@ -70,6 +73,7 @@ export function RoomPlan({
           it here.
         </p>
       )}
+      {saveError && <p className="text-destructive text-sm">{saveError}</p>}
       <div
         ref={containerRef}
         className="bg-muted/20 relative mx-auto aspect-square w-full max-w-sm border-2"
@@ -81,6 +85,7 @@ export function RoomPlan({
             index={index}
             containerRef={containerRef}
             onOpen={() => onOpenUnit(unit)}
+            onSaveError={setSaveError}
           />
         ))}
         {features.map((feature) => (
@@ -88,6 +93,7 @@ export function RoomPlan({
             key={feature.id}
             feature={feature}
             containerRef={containerRef}
+            onSaveError={setSaveError}
           />
         ))}
       </div>

@@ -9,7 +9,8 @@ type Delta = { dx: number; dy: number };
  * Pointer drag for floor-plan items. `start` captures whatever the item needs
  * to remember when the drag begins (its starting position, the container
  * size); `move` gets the distance moved since then; `end` learns whether the
- * pointer actually moved, so a tap can open the item instead.
+ * pointer actually moved, so a tap can open the item instead, and gets the
+ * origin back so a failed save can undo the move.
  * Spread `handlers` on the dragged element (which needs `touch-none`).
  */
 export function useDrag<Origin>({
@@ -19,7 +20,7 @@ export function useDrag<Origin>({
 }: {
   start: () => Origin;
   move: (delta: Delta, origin: Origin) => void;
-  end: (moved: boolean) => void;
+  end: (moved: boolean, origin: Origin) => void;
 }) {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ x: number; y: number; origin: Origin; moved: boolean } | null>(
@@ -48,7 +49,7 @@ export function useDrag<Origin>({
     const drag = dragRef.current;
     dragRef.current = null;
     setDragging(false);
-    if (drag) end(drag.moved);
+    if (drag) end(drag.moved, drag.origin);
   }
 
   return { dragging, handlers: { onPointerDown, onPointerMove, onPointerUp } };

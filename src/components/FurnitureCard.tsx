@@ -10,11 +10,13 @@ export function FurnitureCard({
   index,
   containerRef,
   onOpen,
+  onSaveError,
 }: {
   unit: PlanLocation;
   index: number;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onOpen: () => void;
+  onSaveError: (message: string) => void;
 }) {
   const { pos, dragging, handlers } = usePlanCard({
     location: unit,
@@ -22,6 +24,7 @@ export function FurnitureCard({
     size: CARD_SIZE,
     containerRef,
     onOpen,
+    onSaveError,
   });
   const Icon = unitTypeIcon(unit.unit_type);
 

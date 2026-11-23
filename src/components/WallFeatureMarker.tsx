@@ -1,35 +1,38 @@
-import { useState } from "react";
-import { useDrag } from "@/hooks/useDrag";
+import { useSavedDrag } from "@/hooks/useSavedDrag";
 import { type RoomFeature, saveFeaturePosition } from "@/lib/roomFeatures";
 import { cn } from "@/lib/utils";
 
 const MARKER_LENGTH = 28;
 const MARKER_THICKNESS = 10;
 
-/** A door or window drawn on its wall; drag it along the wall to move it. */
+/**
+ * A door or window drawn on its wall; drag it along the wall to move it.
+ * Save failures are handled as described on useSavedDrag.
+ */
 export function WallFeatureMarker({
   feature,
   containerRef,
+  onSaveError,
 }: {
   feature: RoomFeature;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  onSaveError: (message: string) => void;
 }) {
-  const [position, setPosition] = useState(feature.position);
   const horizontal = feature.wall === "top" || feature.wall === "bottom";
 
-  const { dragging, handlers } = useDrag({
-    start: () => {
+  const { value: position, dragging, handlers } = useSavedDrag({
+    initial: feature.position,
+    measure: () => {
       const bounds = containerRef.current?.getBoundingClientRect();
-      return { position, wallLength: (horizontal ? bounds?.width : bounds?.height) ?? 1 };
+      return (horizontal ? bounds?.width : bounds?.height) ?? 1;
     },
-    move: ({ dx, dy }, origin) => {
+    apply: (start, { dx, dy }, wallLength) => {
       const along = horizontal ? dx : dy;
-      const fraction = origin.wallLength > 0 ? along / origin.wallLength : 0;
-      setPosition(Math.min(1, Math.max(0, origin.position + fraction)));
+      const fraction = wallLength > 0 ? along / wallLength : 0;
+      return Math.min(1, Math.max(0, start + fraction));
     },
-    end: (moved) => {
-      if (moved) saveFeaturePosition(feature.id, position);
-    },
+    save: (newPosition) => saveFeaturePosition(feature.id, newPosition),
+    onSaveError,
   });
 
   return (
